@@ -1,3 +1,6 @@
+<img width="935" height="470" alt="image" src="https://github.com/user-attachments/assets/62c8fed6-1bb6-484d-b9a0-ca8c467e31b8" />
+<img width="938" height="478" alt="image" src="https://github.com/user-attachments/assets/a15b8f43-485b-4ef1-9652-e81cb7cc4c46" />
+<img width="949" height="472" alt="image" src="https://github.com/user-attachments/assets/e9ec1e22-4715-4c63-bd9b-5f6c9b36f1c3" />
 # 💸 TrackMate – Expense Management System
 
 **TrackMate**<img width="945" height="468" alt="image" src="https://github.com/user-attachments/assets/f0a2c91f-679e-4143-9b8d-af14f2f72188" />
@@ -92,3 +95,15 @@
 ├── server.js           # Express server entry point
 ├── package.json        # Project manifest
 └── README.md
+🌐 Deployment
+The app is ready to deploy on:
+
+Render or Vercel for frontend
+
+Render or Railway for backend
+
+📢 Contributions
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+📜 License
+This project is licensed under the MIT License.
