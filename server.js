@@ -16,7 +16,7 @@ connectDb();
  app.use(cors());
 app.use(morgan('dev'));
  app.use(express.json());
-
+app.use("/api/v1/budget", require("./routes/budgetRoute"));
 
  //TEST ROUTE (Add this here)
 app.get('/test', (req, res) => {

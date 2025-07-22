@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Form, Input, message, Modal, Select, Table, DatePicker } from "antd";
-import { UnorderedListOutlined, AreaChartOutlined, EditOutlined, DeleteOutlined, } from "@ant-design/icons";
-import Layout from "./../components/Layout/Layout";
+import { UnorderedListOutlined, AreaChartOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import Layout from "../components/Layout/Layout";
 import axios from "axios";
-import Spinner from "./../components/Spinner";
+import Spinner from "../components/Spinner";
 import moment from "moment";
 import Analytics from "../components/Analytics";
+
 const { RangePicker } = DatePicker;
 
 const HomePage = () => {
@@ -17,7 +18,11 @@ const HomePage = () => {
   const [type, setType] = useState("all");
   const [viewData, setViewData] = useState("table");
   const [editable, setEditable] = useState(null);
-  //table data
+
+  // New States for Budget
+  const [budget, setBudget] = useState(0);
+  const [totalExpense, setTotalExpense] = useState(0);
+
   const columns = [
     {
       title: "Date",
@@ -42,26 +47,16 @@ const HomePage = () => {
     },
     {
       title: "Actions",
-       render: (text, record) => (
+      render: (text, record) => (
         <div>
-          <EditOutlined
-            onClick={() => {
-              setEditable(record);
-              setShowModal(true);
-            }}
-          />
-          <DeleteOutlined
-            className="mx-2"
-            onClick={() => {
-              handleDelete(record);
-            }}
-          />
+          <EditOutlined onClick={() => { setEditable(record); setShowModal(true); }} />
+          <DeleteOutlined className="mx-2" onClick={() => handleDelete(record)} />
         </div>
       ),
     },
   ];
 
-  //get all transactions
+  // Fetch all transactions and calculate total expense
   useEffect(() => {
     const getAllTransactions = async () => {
       try {
@@ -75,7 +70,11 @@ const HomePage = () => {
         });
         setLoading(false);
         setAllTransaction(res.data);
-        console.log(res.data);
+
+        const expense = res.data
+          .filter((txn) => txn.type === "expense")
+          .reduce((acc, txn) => acc + txn.amount, 0);
+        setTotalExpense(expense);
       } catch (error) {
         console.log(error);
         message.error("Fetch issue with transaction");
@@ -84,7 +83,23 @@ const HomePage = () => {
     getAllTransactions();
   }, [frequency, selectedDate, type]);
 
-   //delete handler
+  // Fetch budget from backend
+  useEffect(() => {
+    const fetchBudget = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem("user"));
+        const res = await axios.post("/api/v1/budget/get-budget", { userid: user._id });
+        if (res.data.success) {
+          setBudget(res.data.budget);
+        }
+      } catch (error) {
+        console.log("Failed to fetch budget", error);
+      }
+    };
+    fetchBudget();
+  }, []);
+
+  // Delete transaction
   const handleDelete = async (record) => {
     try {
       setLoading(true);
@@ -95,34 +110,29 @@ const HomePage = () => {
       message.success("Transaction Deleted!");
     } catch (error) {
       setLoading(false);
-      console.log(error);
-      message.error("unable to delete");
+      message.error("Unable to delete");
     }
   };
 
-  // form handling
+  // Add/Edit transaction
   const handleSubmit = async (values) => {
     try {
       const user = JSON.parse(localStorage.getItem("user"));
       setLoading(true);
       if (editable) {
         await axios.post("/api/v1/transactions/edit-transaction", {
-          payload: {
-            ...values,
-            userId: user._id,
-          },
+          payload: { ...values, userId: user._id },
           transactionId: editable._id,
         });
-        setLoading(false);
         message.success("Transaction Updated Successfully");
       } else {
         await axios.post("/api/v1/transactions/add-transaction", {
           ...values,
           userid: user._id,
         });
-        setLoading(false);
         message.success("Transaction Added Successfully");
       }
+      setLoading(false);
       setShowModal(false);
       setEditable(null);
     } catch (error) {
@@ -134,22 +144,58 @@ const HomePage = () => {
   return (
     <Layout>
       {loading && <Spinner />}
-      <div className="filters">
+
+      {/* Budget Alert */}
+      {budget > 0 && (
+        <div className={`alert ${totalExpense > budget ? 'alert-danger' : 'alert-success'} text-center`}>
+          Monthly Budget: ₹{budget} | Spent: ₹{totalExpense}
+          {totalExpense > budget && <strong> (Over Budget!)</strong>}
+        </div>
+      )}
+
+      {/* Budget Form */}
+      <Form
+        layout="inline"
+        onFinish={async (values) => {
+          try {
+            const user = JSON.parse(localStorage.getItem("user"));
+            const res = await axios.post("/api/v1/budget/set-budget", {
+              userid: user._id,
+              budget: values.budget,
+            });
+            if (res.data.success) {
+              message.success("Budget set successfully");
+              setBudget(values.budget);
+            }
+          } catch (err) {
+            message.error("Failed to set budget");
+          }
+        }}
+        className="mb-3"
+      >
+        <Form.Item name="budget">
+          <Input type="number" placeholder="Set Monthly Budget (₹)" />
+        </Form.Item>
+        <Form.Item>
+          <button type="submit" className="btn btn-primary">Set Budget</button>
+        </Form.Item>
+      </Form>
+
+      {/* Filters */}
+      <div className="filters d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div>
           <h6>Select Frequency</h6>
           <Select value={frequency} onChange={(values) => setFrequency(values)}>
             <Select.Option value="7">LAST 1 Week</Select.Option>
             <Select.Option value="30">LAST 1 Month</Select.Option>
-            <Select.Option value="365">LAST 1 year</Select.Option>
-            <Select.Option value="custom">custom</Select.Option>
+            <Select.Option value="365">LAST 1 Year</Select.Option>
+            <Select.Option value="custom">Custom</Select.Option>
           </Select>
           {frequency === "custom" && (
-            <RangePicker
-              value={selectedDate}
-              onChange={(values) => setSelectedDate(values)}
-            />
+            <RangePicker value={selectedDate} onChange={(values) => setSelectedDate(values)} />
           )}
         </div>
+
         <div>
           <h6>Select Type</h6>
           <Select value={type} onChange={(values) => setType(values)}>
@@ -158,6 +204,7 @@ const HomePage = () => {
             <Select.Option value="expense">EXPENSE</Select.Option>
           </Select>
         </div>
+
         <div className="switch-icons">
           <UnorderedListOutlined
             className={`mx-2 ${viewData === "table" ? "active-icon" : "inactive-icon"}`}
@@ -168,15 +215,15 @@ const HomePage = () => {
             onClick={() => setViewData("analytics")}
           />
         </div>
+
         <div>
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowModal(true)}
-          >
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
             Add New
           </button>
         </div>
       </div>
+
+      {/* Data Table / Analytics */}
       <div className="content">
         {viewData === "table" ? (
           <Table columns={columns} dataSource={allTransaction} />
@@ -184,6 +231,8 @@ const HomePage = () => {
           <Analytics allTransaction={allTransaction} />
         )}
       </div>
+
+      {/* Add/Edit Modal */}
       <Modal
         title={editable ? "Edit Transaction" : "Add Transaction"}
         open={showModal}
