@@ -30,12 +30,12 @@ app.use('/api/v1/users', require('./routes/userRoute'));
 //transaction routes
 app.use("/api/v1/transactions", require("./routes/transactionRoutes"));
 
-//static files
-app.use(express.static(path.join(__dirname, "./client/build")));
-
-app.get("*", function (req, res) {
-  res.sendFile(path.join(__dirname, "./client/build/index.html"));
-});
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "./client/build")));
+  app.get("*", function (req, res) {
+    res.sendFile(path.join(__dirname, "./client/build/index.html"));
+  });
+}
 
  //port
  const PORT = 8080 || process.env.PORT;
